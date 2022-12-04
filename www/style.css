@@ -9,3 +9,35 @@ html, body {
 	align-items: center;
 }
 
+.rotate_clockwise {
+	-webkit-animation:clockwise 0.35s ease-in-out; // No more infinite
+    -moz-animation:clockwise 0.35s linear;
+    animation:clockwise 0.35s linear;
+}
+
+
+.rotate_counterclockwise {
+	-webkit-animation:counterclockwise 0.35s ease-in-out; // No more infinite
+    -moz-animation:counterclockwise 0.35s linear;
+    animation:counterclockwise 0.35s linear;
+}
+
+@-moz-keyframes clockwise {
+    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); }
+}
+@-webkit-keyframes clockwise {
+    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); }
+}
+@keyframes clockwise { 
+    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); } 
+}
+
+@-moz-keyframes counterclockwise {
+    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); }
+}
+@-webkit-keyframes counterclockwise {
+    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); }
+}
+@keyframes counterclockwise { 
+    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); } 
+}

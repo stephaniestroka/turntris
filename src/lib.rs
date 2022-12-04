@@ -77,9 +77,9 @@ impl Position {
         let l = BOARD_LENGTH as i32 - 1;
 		match orientation {
             Orientation::Zero => Position::new(cmp::max(0, self.x - 1), self.y),
-            Orientation::Ninety => Position::new(self.x, cmp::max(0, self.y - 1)),
+            Orientation::Ninety => Position::new(self.x, cmp::min(l, self.y + 1)),
             Orientation::OneEighty => Position::new(cmp::min(l, self.x + 1), self.y),
-            Orientation::TwoSeventy => Position::new(self.x, cmp::min(l, self.y + 1)),
+            Orientation::TwoSeventy => Position::new(self.x, cmp::max(0, self.y - 1)),
         }
 	}
 
@@ -87,9 +87,9 @@ impl Position {
         let l = BOARD_LENGTH as i32 - 1;
 		match orientation {
             Orientation::Zero => Position::new(cmp::min(l, self.x + 1), self.y),
-            Orientation::Ninety => Position::new(self.x, cmp::min(l, self.y + 1)),
+            Orientation::Ninety => Position::new(self.x, cmp::max(0, self.y - 1)),
             Orientation::OneEighty => Position::new(cmp::max(0, self.x - 1), self.y),
-            Orientation::TwoSeventy => Position::new(self.x, cmp::max(0, self.y - 1)),
+            Orientation::TwoSeventy => Position::new(self.x, cmp::min(l, self.y + 1)),
         }
 	}
 

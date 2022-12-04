@@ -72,11 +72,20 @@ document.addEventListener("keyup", function (e) {
 		// move right 
 		board.move_stone(Direction.Right);
 	} else if (e.keyCode == 38) {
-		// roate clockwise 
-		board.rotate_clockwise();
-	} else if (e.keyCode == 40) {
-		// roate counter-clockwise 
+		// roate clockwise
+		canvas.classList.add("rotate_clockwise");
+
 		board.rotate_counter_clockwise();
+		window.setTimeout(() => {
+			canvas.classList.remove("rotate_clockwise");
+		}, 500);
+	} else if (e.keyCode == 40) {
+		// roate counter-clockwise
+		canvas.classList.add("rotate_counterclockwise");
+		board.rotate_clockwise();
+		window.setTimeout(() => {
+			canvas.classList.remove("rotate_counterclockwise");
+		}, 500);
 	}
 	drawStones();
 });
