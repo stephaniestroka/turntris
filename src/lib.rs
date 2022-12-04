@@ -4,6 +4,9 @@ use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
 use std::cmp;
 use std::fmt;
+use rand::Rng;
+use rand::distributions::Uniform;
+use rand::distributions::Distribution;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -112,20 +115,59 @@ impl fmt::Display for Position {
 #[derive(Copy, Clone, Hash, Debug)]
 pub struct Stone {
     consists_of: [Position; 4],
+    color: Cell,
 }
 
 impl Stone {
     // TODO: create other kinds of stones at random
     pub fn new() -> Stone {
+        let mut rng = rand::thread_rng();
+        let die = Uniform::from(1..4);
         let middle = (BOARD_LENGTH / 2) as i32;
-        return Stone {
-            consists_of: [
-                Position::new(middle, middle - 2),
-                Position::new(middle, middle - 1),
-                Position::new(middle, middle),
-                Position::new(middle, middle + 1),
-            ],
+        let throw = die.sample(&mut rng);
+        match throw {
+            1 => Stone {
+                consists_of: [
+                    Position::new(middle, middle - 2),
+                    Position::new(middle, middle - 1),
+                    Position::new(middle, middle),
+                    Position::new(middle, middle + 1),
+                ],
+                color: Cell::Blue,
+            },
+            2 => Stone {
+                consists_of: [
+                    Position::new(middle - 1, middle - 1),
+                    Position::new(middle, middle - 1),
+                    Position::new(middle, middle),
+                    Position::new(middle, middle + 1),
+                ],
+                color: Cell::Green,
+            },
+            3 => Stone {
+                consists_of: [
+                    Position::new(middle - 1, middle - 1),
+                    Position::new(middle, middle - 1),
+                    Position::new(middle - 1, middle),
+                    Position::new(middle, middle),
+                ],
+                color: Cell::Orange,
+            },
+            4 => Stone {
+                consists_of: [
+                    Position::new(middle + 1, middle - 1),
+                    Position::new(middle, middle - 1),
+                    Position::new(middle, middle),
+                    Position::new(middle, middle + 1),
+                ],
+                color: Cell::Purple,
+            },
+            i32::MIN..=0_i32 | 5_i32..=i32::MAX => todo!()
         }
+    }
+
+    fn color(&self) -> &Cell {
+        &self.color
     }
     
     fn mut_positions(&mut self) -> &mut [Position; 4] {
@@ -159,11 +201,14 @@ impl Stone {
 }
 
 #[wasm_bindgen]
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Cell {
     Free = 0,
-    // TODO: more colors
     Blue = 1,
+    Purple = 2,
+    Orange = 3,
+    Green = 4,
+    Yellow = 5,
 }
 
 #[wasm_bindgen]
@@ -212,7 +257,7 @@ impl BoardEnvironment {
         for stone in self.stones.iter() {
             for position in stone.positions().iter() {
                 let i = position.get_index(&self.orientation);    
-                cells[i] = Cell::Blue;
+                cells[i] = *stone.color();
             }
         }
         return cells;
@@ -297,7 +342,7 @@ impl Board {
                 let mut cells = self.board_environment.get_cells();
                 for position in stone.positions().iter() {
                     let i = position.get_index(&self.board_environment.orientation);    
-                    cells[i] = Cell::Blue;
+                    cells[i] = *stone.color();
                 }
                 cells.as_ptr()
             }

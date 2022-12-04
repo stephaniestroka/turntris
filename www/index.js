@@ -4,7 +4,11 @@ import { memory } from "turntris/turntris_bg";
 const CELL_SIZE = 25; // px
 const BOARD_COLOR = "#DDDDDD";
 const BOARD_STROKE_COLOR = "#333333";
-const BLUE_COLOR = "#0000FF";
+const BLUE_COLOR = "#0099ff";
+const PURPLE_COLOR = "#9933ff";
+const ORANGE_COLOR = "#ff9933";
+const GREEN_COLOR = "#00cc66";
+
 
 const board = Board.new();
 
@@ -46,6 +50,15 @@ const drawStones = () => {
 					break;
 				case Cell.Blue:
 					ctx.fillStyle = BLUE_COLOR;
+					break;
+				case Cell.Purple:
+					ctx.fillStyle = PURPLE_COLOR;
+					break;
+				case Cell.Green:
+					ctx.fillStyle = GREEN_COLOR;
+					break;
+				case Cell.Orange:
+					ctx.fillStyle = ORANGE_COLOR;
 					break;
 			}
 			ctx.fillRect(
