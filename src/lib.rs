@@ -2,9 +2,7 @@ mod utils;
 
 use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
-use std::cmp;
 use std::fmt;
-use rand::Rng;
 use rand::distributions::Uniform;
 use rand::distributions::Distribution;
 
@@ -21,7 +19,7 @@ extern {
     fn log(s: &str);
 }
 
-const BOARD_LENGTH: usize = 30;
+const BOARD_LENGTH: usize = 20;
 
 #[wasm_bindgen]
 pub fn greet() {
@@ -77,22 +75,20 @@ impl Position {
     }
 
     fn get_left(&self, orientation: &Orientation) -> Position {
-        let l = BOARD_LENGTH as i32 - 1;
 		match orientation {
-            Orientation::Zero => Position::new(cmp::max(0, self.x - 1), self.y),
-            Orientation::Ninety => Position::new(self.x, cmp::min(l, self.y + 1)),
-            Orientation::OneEighty => Position::new(cmp::min(l, self.x + 1), self.y),
-            Orientation::TwoSeventy => Position::new(self.x, cmp::max(0, self.y - 1)),
+            Orientation::Zero => Position::new(self.x - 1, self.y),
+            Orientation::Ninety => Position::new(self.x, self.y + 1),
+            Orientation::OneEighty => Position::new(self.x + 1, self.y),
+            Orientation::TwoSeventy => Position::new(self.x, self.y - 1),
         }
 	}
 
     fn get_right(&self, orientation: &Orientation) -> Position {
-        let l = BOARD_LENGTH as i32 - 1;
 		match orientation {
-            Orientation::Zero => Position::new(cmp::min(l, self.x + 1), self.y),
-            Orientation::Ninety => Position::new(self.x, cmp::max(0, self.y - 1)),
-            Orientation::OneEighty => Position::new(cmp::max(0, self.x - 1), self.y),
-            Orientation::TwoSeventy => Position::new(self.x, cmp::min(l, self.y + 1)),
+            Orientation::Zero => Position::new(self.x + 1, self.y),
+            Orientation::Ninety => Position::new(self.x, self.y - 1),
+            Orientation::OneEighty => Position::new(self.x - 1, self.y),
+            Orientation::TwoSeventy => Position::new(self.x, self.y + 1),
         }
 	}
 
@@ -125,7 +121,7 @@ impl Stone {
         let die = Uniform::from(1..4);
         let middle = (BOARD_LENGTH / 2) as i32;
         let throw = die.sample(&mut rng);
-        match throw {
+        match 3 {
             1 => Stone {
                 consists_of: [
                     Position::new(middle, middle - 2),
@@ -186,6 +182,7 @@ impl Stone {
 	        };
             if !new_position.is_valid() || !environment.is_cell_free(&new_position) {
                 return false;
+            } else {
             }
         }
         for position in self.mut_positions().iter_mut() {
@@ -220,8 +217,7 @@ pub enum Direction {
 
 #[wasm_bindgen]
 pub struct BoardEnvironment {
-    // once stones touched the floor, they are immutable
-    stones: Vec<Stone>,
+    cells: [Cell; BOARD_LENGTH * BOARD_LENGTH],
     orientation: Orientation,
 }
 
@@ -229,7 +225,7 @@ pub struct BoardEnvironment {
 impl BoardEnvironment {
     pub fn new() -> BoardEnvironment {
         BoardEnvironment {
-            stones: Vec::with_capacity((BOARD_LENGTH * BOARD_LENGTH ) / 4),
+            cells: [Cell::Free; BOARD_LENGTH * BOARD_LENGTH],
             orientation: Orientation::Zero
         }
     }
@@ -253,18 +249,52 @@ impl BoardEnvironment {
 
     // Cells with the current fixed stones on the board.
     fn get_cells(&self) -> [Cell; BOARD_LENGTH * BOARD_LENGTH] {
-        let mut cells = [Cell::Free; BOARD_LENGTH * BOARD_LENGTH];
-        for stone in self.stones.iter() {
-            for position in stone.positions().iter() {
-                let i = position.get_index(&self.orientation);    
-                cells[i] = *stone.color();
+        return self.cells;
+    }
+    
+    fn update_rows(&mut self) {
+        for y in 0..BOARD_LENGTH {
+            let mut row_complete = true;
+            for x in 0..BOARD_LENGTH {
+                if self.cells[y * BOARD_LENGTH + x] == Cell::Free {
+                    row_complete = false;
+                    continue
+                }
+            }
+            log(&format!("Row completed? {}", row_complete));
+            if row_complete {
+                for x in 0..BOARD_LENGTH { 
+                    self.cells[y * BOARD_LENGTH + x] = Cell::Free;
+                }
             }
         }
-        return cells;
+    }
+
+    fn update_columns(&mut self) {
+        for x in 0..BOARD_LENGTH {
+            let mut col_complete = true;
+            for y in 0..BOARD_LENGTH {
+                if self.cells[y * BOARD_LENGTH + x] == Cell::Free {
+                    col_complete = false;
+                    continue
+                }
+            }
+            log(&format!("Col completed? {}", col_complete));
+            if col_complete {
+                for y in 0..BOARD_LENGTH { 
+                    self.cells[y * BOARD_LENGTH + x] = Cell::Free;
+                }
+            }
+        }
     }
 
     fn add(&mut self, stone: &Stone) {
-        self.stones.push(*stone);
+         for position in stone.positions().iter() {
+            log(&format!("Adding position to board {:?}", position));
+            let i = position.get_index(&self.orientation);    
+            log(&format!("Index: {}", i));
+            self.cells[i] = *stone.color();
+        }
     }
 
     fn rotate_clockwise(&mut self) {
@@ -333,18 +363,19 @@ impl Board {
 
 
     // Snapshot of the board with fixed stones and falling stone.
-    pub fn snapshot(&self) -> *const Cell {
+    pub fn snapshot(&mut self) -> *const Cell {
         return match &self.falling_stone {
             None => {
-                self.board_environment.get_cells().as_ptr()
+                self.cells = self.board_environment.get_cells();
+                self.cells.as_ptr()
             }
             Some(stone) => {
-                let mut cells = self.board_environment.get_cells();
+                self.cells = self.board_environment.get_cells();
                 for position in stone.positions().iter() {
                     let i = position.get_index(&self.board_environment.orientation);    
-                    cells[i] = *stone.color();
+                    self.cells[i] = *stone.color();
                 }
-                cells.as_ptr()
+                self.cells.as_ptr()
             }
         }
     }
@@ -367,6 +398,8 @@ impl Board {
                     self.board_environment.add(stone);
                 }
             }
+            self.board_environment.update_rows();
+            self.board_environment.update_columns();
             return self.add_stone();
         }
         return true;
