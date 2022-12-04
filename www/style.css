@@ -1,10 +1,19 @@
 html, body {
 	height: 100%;
+    font-family: Geneva,Tahoma,Verdana,sans-serif;
+    background: rgb(34,193,195);
+    background: linear-gradient(0deg, rgba(34,193,195,1) 0%, rgba(253,187,45,1) 100%);
+}
+
+.title {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    font-size: 2em;
 }
 
 .container {
-  display: flex;
-	height: 100%;
+    display: flex;
 	justify-content: center;
 	align-items: center;
 }
@@ -15,7 +24,6 @@ html, body {
     animation:clockwise 0.35s linear;
 }
 
-
 .rotate_counterclockwise {
 	-webkit-animation:counterclockwise 0.35s ease-in-out; // No more infinite
     -moz-animation:counterclockwise 0.35s linear;
@@ -23,21 +31,21 @@ html, body {
 }
 
 @-moz-keyframes clockwise {
-    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); }
+    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); }
 }
 @-webkit-keyframes clockwise {
-    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); }
+    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); }
 }
 @keyframes clockwise { 
-    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); } 
+    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); } 
 }
 
 @-moz-keyframes counterclockwise {
-    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); }
+    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); }
 }
 @-webkit-keyframes counterclockwise {
-    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); }
+    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); }
 }
 @keyframes counterclockwise { 
-    100% { -webkit-transform: rotate(-90deg); transform:rotate(-90deg); } 
+    100% { -webkit-transform: rotate(90deg); transform:rotate(90deg); } 
 }
