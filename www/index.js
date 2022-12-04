@@ -34,7 +34,7 @@ const getIndex = (row, column) => {
 };
 
 const drawStones = () => {
-	const cellsPtr = board.cells();
+	const cellsPtr = board.snapshot();
 	const cells = new Uint8Array(memory.buffer, cellsPtr, board.length() * board.length());
 	ctx.beginPath();
 	for (let row = 0; row < board.length(); row++) {
@@ -71,11 +71,11 @@ document.addEventListener("keyup", function (e) {
 		// move right 
 		board.move_stone(Direction.Right);
 	}
+	drawStones();
 });
 
 const renderLoop = async () => {
 	if (board.tick()) {
-		console.log('stone drawn');
 		drawStones();
 		await sleep(500);
 		requestAnimationFrame(renderLoop);

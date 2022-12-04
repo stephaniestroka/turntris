@@ -2,6 +2,8 @@ mod utils;
 
 use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
+use std::cmp;
+use std::fmt;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -72,20 +74,22 @@ impl Position {
     }
 
     fn get_left(&self, orientation: &Orientation) -> Position {
+        let l = BOARD_LENGTH as i32 - 1;
 		match orientation {
-            Orientation::Zero => Position::new(self.x - 1, self.y),
-            Orientation::Ninety => Position::new(self.x, self.y - 1),
-            Orientation::OneEighty => Position::new(self.x + 1, self.y),
-            Orientation::TwoSeventy => Position::new(self.x, self.y + 1),
+            Orientation::Zero => Position::new(cmp::max(0, self.x - 1), self.y),
+            Orientation::Ninety => Position::new(self.x, cmp::max(0, self.y - 1)),
+            Orientation::OneEighty => Position::new(cmp::min(l, self.x + 1), self.y),
+            Orientation::TwoSeventy => Position::new(self.x, cmp::min(l, self.y + 1)),
         }
 	}
 
     fn get_right(&self, orientation: &Orientation) -> Position {
+        let l = BOARD_LENGTH as i32 - 1;
 		match orientation {
-            Orientation::Zero => Position::new(self.x + 1, self.y),
-            Orientation::Ninety => Position::new(self.x, self.y + 1),
-            Orientation::OneEighty => Position::new(self.x - 1, self.y),
-            Orientation::TwoSeventy => Position::new(self.x, self.y - 1),
+            Orientation::Zero => Position::new(cmp::min(l, self.x + 1), self.y),
+            Orientation::Ninety => Position::new(self.x, cmp::min(l, self.y + 1)),
+            Orientation::OneEighty => Position::new(cmp::max(0, self.x - 1), self.y),
+            Orientation::TwoSeventy => Position::new(self.x, cmp::max(0, self.y - 1)),
         }
 	}
 
@@ -97,7 +101,15 @@ impl Position {
     }
 }
 
-#[derive(Clone)]
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+
+//#[derive(Clone, Copy)]
+#[derive(Copy, Clone, Hash, Debug)]
 pub struct Stone {
     consists_of: [Position; 4],
 }
@@ -115,13 +127,33 @@ impl Stone {
             ],
         }
     }
-
-    fn update(&mut self, consists_of: [Position; 4]) {
-        self.consists_of = consists_of;
-    }
     
+    fn mut_positions(&mut self) -> &mut [Position; 4] {
+        return &mut self.consists_of;
+    }
+
     fn positions(&self) -> &[Position; 4] {
         return &self.consists_of;
+    }
+
+    fn move_unless_blocked(&mut self, direction: Direction, environment: &BoardEnvironment) -> bool {
+        for position in self.positions().iter() {
+	        let new_position = match direction {
+		        Direction::Left => position.get_left(&environment.orientation),
+		        Direction::Right => position.get_right(&environment.orientation),
+	        };
+            if !new_position.is_valid() || !environment.is_cell_free(&new_position) {
+                return false;
+            }
+        }
+        for position in self.mut_positions().iter_mut() {
+	        let new_position = match direction {
+		        Direction::Left => position.get_left(&environment.orientation),
+		        Direction::Right => position.get_right(&environment.orientation),
+	        };
+            *position = new_position;
+        }
+        return true;
     }
 
     fn lowest_positions(&self, orientation: &Orientation) -> HashSet<Position> {
@@ -181,118 +213,117 @@ pub enum Direction {
 }
 
 #[wasm_bindgen]
-pub struct Board {
-    cells: [Cell; BOARD_LENGTH * BOARD_LENGTH],
+pub struct BoardEnvironment {
+    // once stones touched the floor, they are immutable
     stones: Vec<Stone>,
     orientation: Orientation,
+}
+
+#[wasm_bindgen]
+impl BoardEnvironment {
+    pub fn new() -> BoardEnvironment {
+        BoardEnvironment {
+            stones: Vec::with_capacity((BOARD_LENGTH * BOARD_LENGTH ) / 4),
+            orientation: Orientation::Zero
+        }
+    }
+
+    fn is_cell_free(&self, position: &Position) -> bool {
+        let i = position.get_index(&self.orientation);
+        let cells = self.get_cells();
+        return cells[i] == Cell::Free;
+    }
+
+    // Returns false if the cell under the given stone is free.
+    fn is_blocked_below(&self, stone: &Stone) -> bool {
+        for position in stone.positions().iter() {
+            let position_under = position.get_under(&self.orientation);
+            if !position_under.is_valid() || !self.is_cell_free(&position_under) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Cells with the current fixed stones on the board.
+    fn get_cells(&self) -> [Cell; BOARD_LENGTH * BOARD_LENGTH] {
+        let mut cells = [Cell::Free; BOARD_LENGTH * BOARD_LENGTH];
+        for stone in self.stones.iter() {
+            log(&format!("stone on board on position: {:?}", stone.positions()));
+            for position in stone.positions().iter() {
+                let i = position.get_index(&self.orientation);    
+                cells[i] = Cell::Blue;
+            }
+        }
+        return cells;
+    }
+
+    fn add(&mut self, stone: &Stone) {
+        self.stones.push(*stone);
+    }
+}
+
+#[wasm_bindgen]
+pub struct Board {
+    falling_stone:  Option<Stone>,
+    board_environment: BoardEnvironment,
+    cells: [Cell; BOARD_LENGTH * BOARD_LENGTH],
 }
 
 #[wasm_bindgen]
 impl Board {
     pub fn new() -> Board {
         Board {
+            board_environment: BoardEnvironment::new(),
+            falling_stone: None,
             cells: [Cell::Free; BOARD_LENGTH * BOARD_LENGTH],
-            stones: Vec::with_capacity((BOARD_LENGTH * BOARD_LENGTH ) / 4),
-            orientation: Orientation::Zero,
-        }
-    }
-
-    // TODO: pass color
-	// Returns false if the cell is already set.
-    fn set_cell(&mut self, position: &Position) -> bool {
-        let i = position.get_index(&self.orientation);
-        match self.cells[i] {
-            Cell::Free => {
-				self.cells[i] = Cell::Blue;
-				true
-			},
-            _ => false 
         }
     }
 
     fn add_stone(&mut self) -> bool {
-        let stone = Stone::new();
-        for position in stone.positions().iter() {
-            if !self.set_cell(position) {
+        let new_stone = Stone::new();
+        for position in new_stone.positions().iter() {
+            if !self.board_environment.is_cell_free(position) {
                 return false;
             }
         }
-        self.stones.push(stone);
-        return true;
+        self.falling_stone = Some(new_stone);
+        true
     }
 
-    fn free_cell(&mut self, position: &Position) {
-        let i = position.get_index(&self.orientation);
-        self.cells[i] = Cell::Free;
-    }
-
-    fn is_cell_free(&self, position: &Position) -> bool {
-        let i = position.get_index(&self.orientation);
-        return self.cells[i] == Cell::Free;
-    }
-
-    // Returns false if the cell under the given position is free.
-    fn is_blocked_below(&self, position: &Position) -> bool {
-        let position_under = position.get_under(&self.orientation);
-        return match position_under.is_valid() {
-            true => !self.is_cell_free(&position_under),
-            false => true,
-        }
-    }
-
-    fn stones_fall(&mut self) -> bool {
-        let mut idxs = Vec::<usize>::with_capacity(self.stones.len());
-        {
-            for (i, stone) in self.stones.iter().enumerate() {
-                let mut is_blocked = false;
-                for position in stone.lowest_positions(&self.orientation).iter() {
-                    if self.is_blocked_below(position) {
-                        is_blocked = true;
-                    }
+    fn stone_falls(&mut self) -> bool {
+        return match &mut self.falling_stone {
+            None => {
+                false
+            }
+            Some(stone) => {
+                if self.board_environment.is_blocked_below(stone) {
+                    return false;
                 }
-                if !is_blocked {
-                    idxs.push(i);
+                for position in stone.mut_positions().iter_mut() {
+			        *position = position.get_under(&self.board_environment.orientation);
                 }
+                true
             }
         }
-
-        if idxs.is_empty() {
-            return false;
-        }
-        {
-            for i in idxs.iter() {
-                let mut new_positions: [Position; 4] = [Position::new(0, 0); 4];
-                {
-                    let stone = self.stones.get_mut(*i).unwrap();
-                    let positions = stone.positions().clone();
-                    for (index, position) in positions.iter().enumerate() {
-                        self.free_cell(position);
-						let new_position = position.get_under(&self.orientation);
-                        new_positions[index] = new_position;
-                    }
-                    for position in new_positions.iter() {
-                        self.set_cell(position);
-					}
-                }
-                {
-                    let stone = self.stones.get_mut(*i).unwrap();
-                    stone.update(new_positions);
-                }
-            }
-        }
-        return true;
     }
 
-    pub fn cells(&self) -> *const Cell {
-        return self.cells.as_ptr();
-        /*let mut current_cells: Vec<Cell> = Vec::new();
-        for j in 0..BOARD_LENGTH as i32 {
-            for i in 0..BOARD_LENGTH as i32  {
-                let position = Position::new(i, j);
-                current_cells.push(self.cells[position.get_index(&self.orientation)]);
+
+    // Snapshot of the board with fixed stones and falling stone.
+    pub fn snapshot(&self) -> *const Cell {
+        return match &self.falling_stone {
+            None => {
+                self.board_environment.get_cells().as_ptr()
+            }
+            Some(stone) => {
+                let mut cells = self.board_environment.get_cells();
+                for position in stone.positions().iter() {
+                    let i = position.get_index(&self.board_environment.orientation);    
+                    cells[i] = Cell::Blue;
+                }
+                cells.as_ptr()
             }
         }
-        return current_cells.as_ptr();*/
     }
 
     // The length of one side of the canvas.
@@ -303,10 +334,17 @@ impl Board {
     // Advances the game by one tick.
     pub fn tick(&mut self) -> bool {
         // States:
-        // - All stones that are falling will move down.
+        // - The free falling stone will move down.
         // - If a row is full, the row disappears and all stones will fall down.
         // - If no stone is falling, create a new stone.
-        if !self.stones_fall() {
+        if !self.stone_falls() {
+            match &self.falling_stone {
+                None => {}
+                Some(stone) => {
+                    log(&format!("Stone fell on position: {},{}", stone.positions()[3].x, stone.positions()[3].y));
+                    self.board_environment.add(stone);
+                }
+            }
             return self.add_stone();
         }
         return true;
@@ -314,28 +352,14 @@ impl Board {
 
     // moveStone.
     pub fn move_stone(&mut self, direction: Direction) -> bool {
-		if self.stones.len() < 1 {
-			return false;
+		return match &mut self.falling_stone {
+            None => {
+                false
+            }
+            Some(stone) => {
+                return stone.move_unless_blocked(direction, &self.board_environment);
+            }
 		}
-		let current_stone = self.stones.get(self.stones.len() - 1);
-		log("positions of current stone:");
-        let mut new_positions: [Position; 4] = [Position::new(0, 0); 4];
-		let positions = current_stone.unwrap().positions().clone();
-		for (index, position) in positions.iter().enumerate() {
-			self.free_cell(position);
-			let new_position = match direction{
-				Direction::Left => position.get_left(&self.orientation),
-				Direction::Right => position.get_right(&self.orientation),
-			};
-			new_positions[index] = new_position;
-		}
-		for position in new_positions.iter() {
-			self.set_cell(position);
-		}
-		{
-			let stone = self.stones.get_mut(0).unwrap();
-			stone.update(new_positions);
-		}
-		return true;
+		
 	}
 }
