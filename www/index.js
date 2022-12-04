@@ -63,6 +63,7 @@ drawBoard();
 
 document.addEventListener("keyup", function (e) {
 	e = e || window.event;
+	console.log("key event: " + e.keyCode);
 	// use e.keyCode
 	if (e.keyCode == 37) {
 		// move left
@@ -70,6 +71,12 @@ document.addEventListener("keyup", function (e) {
 	} else if (e.keyCode == 39) {
 		// move right 
 		board.move_stone(Direction.Right);
+	} else if (e.keyCode == 38) {
+		// roate clockwise 
+		board.rotate_clockwise();
+	} else if (e.keyCode == 40) {
+		// roate counter-clockwise 
+		board.rotate_counter_clockwise();
 	}
 	drawStones();
 });

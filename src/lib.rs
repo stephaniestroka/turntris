@@ -55,7 +55,7 @@ impl Position {
         match orientation {
             Orientation::Zero => l * y + x,
             Orientation::Ninety => l * x + (l - y - 1),
-            Orientation::OneEighty => l * (l - y - 1) + (l - y - 1),
+            Orientation::OneEighty => l * (l - y - 1) + (l - x - 1),
             Orientation::TwoSeventy => l * (l - x - 1) + y,
         }
     }
@@ -156,45 +156,6 @@ impl Stone {
         return true;
     }
 
-    fn lowest_positions(&self, orientation: &Orientation) -> HashSet<Position> {
-        let mut set = HashSet::new();
-        for (i, pos1) in self.consists_of.iter().enumerate() {
-            let mut min_vertical = match orientation {
-                Orientation::Zero | Orientation::OneEighty => pos1.y,
-                Orientation::Ninety | Orientation::TwoSeventy => pos1.x
-            };
-            for j in (i+1)..self.consists_of.len() {
-                let pos2 = self.consists_of.get(j).unwrap();
-                match orientation {
-                    Orientation::Zero => {
-                        if pos1.x == pos2.x && pos2.y > pos1.y {
-                            min_vertical = pos2.y;
-                        }
-                    },
-                    Orientation::Ninety => {
-                        if pos1.y == pos2.y && pos2.x > pos1.x {
-                            min_vertical = pos2.x;
-                        }
-                    },
-                    Orientation::OneEighty => {
-                        if pos1.x == pos2.x && pos2.y < pos1.y {
-                            min_vertical = pos2.y;
-                        }
-                    },
-                    Orientation::TwoSeventy => {
-                        if pos1.y == pos2.y && pos2.x < pos1.x {
-                            min_vertical = pos2.x;
-                        }
-                    }
-                };
-            }
-            match orientation {
-                Orientation::Zero | Orientation::OneEighty => set.insert(Position::new(pos1.x, min_vertical)),
-                Orientation::Ninety | Orientation::TwoSeventy => set.insert(Position::new(min_vertical, pos1.y))
-            };
-        }
-        return set;
-    }
 }
 
 #[wasm_bindgen]
@@ -249,7 +210,6 @@ impl BoardEnvironment {
     fn get_cells(&self) -> [Cell; BOARD_LENGTH * BOARD_LENGTH] {
         let mut cells = [Cell::Free; BOARD_LENGTH * BOARD_LENGTH];
         for stone in self.stones.iter() {
-            log(&format!("stone on board on position: {:?}", stone.positions()));
             for position in stone.positions().iter() {
                 let i = position.get_index(&self.orientation);    
                 cells[i] = Cell::Blue;
@@ -260,6 +220,24 @@ impl BoardEnvironment {
 
     fn add(&mut self, stone: &Stone) {
         self.stones.push(*stone);
+    }
+
+    fn rotate_clockwise(&mut self) {
+        match self.orientation {
+            Orientation::Zero => self.orientation = Orientation::Ninety,
+            Orientation::Ninety => self.orientation = Orientation::OneEighty,
+            Orientation::OneEighty => self.orientation = Orientation::TwoSeventy,
+            Orientation::TwoSeventy => self.orientation = Orientation::Zero,
+        }
+    }
+
+    fn rotate_counter_clockwise(&mut self) {
+        match self.orientation {
+            Orientation::Zero => self.orientation = Orientation::TwoSeventy,
+            Orientation::Ninety => self.orientation = Orientation::Zero,
+            Orientation::OneEighty => self.orientation = Orientation::Ninety,
+            Orientation::TwoSeventy => self.orientation = Orientation::OneEighty,
+        }
     }
 }
 
@@ -341,13 +319,20 @@ impl Board {
             match &self.falling_stone {
                 None => {}
                 Some(stone) => {
-                    log(&format!("Stone fell on position: {},{}", stone.positions()[3].x, stone.positions()[3].y));
                     self.board_environment.add(stone);
                 }
             }
             return self.add_stone();
         }
         return true;
+    }
+
+    pub fn rotate_counter_clockwise(&mut self) {
+        self.board_environment.rotate_counter_clockwise();
+    }
+
+    pub fn rotate_clockwise(&mut self) {
+        self.board_environment.rotate_clockwise();
     }
 
     // moveStone.
