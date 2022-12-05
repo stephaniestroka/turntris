@@ -19,12 +19,7 @@ extern {
     fn log(s: &str);
 }
 
-const BOARD_LENGTH: usize = 20;
-
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello, turntris!");
-}
+const BOARD_LENGTH: usize = 30;
 
 enum Orientation {
     Zero, Ninety, OneEighty, TwoSeventy,
@@ -118,10 +113,10 @@ impl Stone {
     // TODO: create other kinds of stones at random
     pub fn new() -> Stone {
         let mut rng = rand::thread_rng();
-        let die = Uniform::from(1..4);
+        let die = Uniform::from(1..5);
         let middle = (BOARD_LENGTH / 2) as i32;
         let throw = die.sample(&mut rng);
-        match 3 {
+        match throw {
             1 => Stone {
                 consists_of: [
                     Position::new(middle, middle - 2),
@@ -157,6 +152,15 @@ impl Stone {
                     Position::new(middle, middle + 1),
                 ],
                 color: Cell::Purple,
+            },
+            5 => Stone {
+                consists_of: [
+                    Position::new(middle - 1, middle - 1),
+                    Position::new(middle, middle - 1),
+                    Position::new(middle, middle),
+                    Position::new(middle + 1, middle),
+                ],
+                color: Cell::Yellow,
             },
             i32::MIN..=0_i32 | 5_i32..=i32::MAX => todo!()
         }
@@ -232,8 +236,7 @@ impl BoardEnvironment {
 
     fn is_cell_free(&self, position: &Position) -> bool {
         let i = position.get_index(&self.orientation);
-        let cells = self.get_cells();
-        return cells[i] == Cell::Free;
+        return self.cells[i] == Cell::Free;
     }
 
     // Returns false if the cell under the given stone is free.
@@ -261,7 +264,6 @@ impl BoardEnvironment {
                     continue
                 }
             }
-            log(&format!("Row completed? {}", row_complete));
             if row_complete {
                 for x in 0..BOARD_LENGTH { 
                     self.cells[y * BOARD_LENGTH + x] = Cell::Free;
@@ -279,7 +281,6 @@ impl BoardEnvironment {
                     continue
                 }
             }
-            log(&format!("Col completed? {}", col_complete));
             if col_complete {
                 for y in 0..BOARD_LENGTH { 
                     self.cells[y * BOARD_LENGTH + x] = Cell::Free;
@@ -290,23 +291,40 @@ impl BoardEnvironment {
 
     fn add(&mut self, stone: &Stone) {
          for position in stone.positions().iter() {
-            log(&format!("Adding position to board {:?}", position));
             let i = position.get_index(&self.orientation);    
-            log(&format!("Index: {}", i));
             self.cells[i] = *stone.color();
         }
     }
 
     fn rotate_clockwise(&mut self) {
+        let mut rotated_cells = [Cell::Free; BOARD_LENGTH * BOARD_LENGTH];
+        for y in 0..BOARD_LENGTH {
+            for x in 0..BOARD_LENGTH {
+                let new_x = BOARD_LENGTH - y - 1;
+                let new_y = x;
+                rotated_cells[new_y * BOARD_LENGTH + new_x] = self.cells[y * BOARD_LENGTH + x];
+            }
+        }
+        self.cells = rotated_cells;
         match self.orientation {
             Orientation::Zero => self.orientation = Orientation::Ninety,
             Orientation::Ninety => self.orientation = Orientation::OneEighty,
             Orientation::OneEighty => self.orientation = Orientation::TwoSeventy,
             Orientation::TwoSeventy => self.orientation = Orientation::Zero,
         }
+
     }
 
     fn rotate_counter_clockwise(&mut self) {
+        let mut rotated_cells = [Cell::Free; BOARD_LENGTH * BOARD_LENGTH];
+        for y in 0..BOARD_LENGTH {
+            for x in 0..BOARD_LENGTH {
+                let new_x = y;
+                let new_y = BOARD_LENGTH - x - 1;
+                rotated_cells[new_y * BOARD_LENGTH + new_x] = self.cells[y * BOARD_LENGTH + x];
+            }
+        }
+        self.cells = rotated_cells;
         match self.orientation {
             Orientation::Zero => self.orientation = Orientation::TwoSeventy,
             Orientation::Ninety => self.orientation = Orientation::Zero,

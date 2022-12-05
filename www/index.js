@@ -8,6 +8,7 @@ const BLUE_COLOR = "#0099ff";
 const PURPLE_COLOR = "#9933ff";
 const ORANGE_COLOR = "#ff9933";
 const GREEN_COLOR = "#00cc66";
+const YELLOW_COLOR = "#ffcc00";
 
 
 const board = Board.new();
@@ -59,6 +60,9 @@ const drawStones = () => {
 					break;
 				case Cell.Orange:
 					ctx.fillStyle = ORANGE_COLOR;
+					break;
+				case Cell.Yellow:
+					ctx.fillStyle = YELLOW_COLOR;
 					break;
 			}
 			ctx.fillRect(
