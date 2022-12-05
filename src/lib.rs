@@ -1,6 +1,5 @@
 mod utils;
 
-use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
 use std::fmt;
 use rand::distributions::Uniform;
@@ -255,7 +254,8 @@ impl BoardEnvironment {
         return self.cells;
     }
     
-    fn update_rows(&mut self) {
+    fn maybe_delete_rows(&mut self) {
+        let mut del_rows = 0;
         for y in 0..BOARD_LENGTH {
             let mut row_complete = true;
             for x in 0..BOARD_LENGTH {
@@ -265,24 +265,17 @@ impl BoardEnvironment {
                 }
             }
             if row_complete {
-                for x in 0..BOARD_LENGTH { 
-                    self.cells[y * BOARD_LENGTH + x] = Cell::Free;
-                }
+                del_rows += 1;
             }
         }
-    }
-
-    fn update_columns(&mut self) {
-        for x in 0..BOARD_LENGTH {
-            let mut col_complete = true;
-            for y in 0..BOARD_LENGTH {
-                if self.cells[y * BOARD_LENGTH + x] == Cell::Free {
-                    col_complete = false;
-                    continue
+        if del_rows > 0 {
+            for y in (del_rows..BOARD_LENGTH).rev() {
+                for x in 0..BOARD_LENGTH {
+                    self.cells[y * BOARD_LENGTH + x] = self.cells[(y - del_rows) * BOARD_LENGTH + x];
                 }
             }
-            if col_complete {
-                for y in 0..BOARD_LENGTH { 
+            for y in 0..del_rows {
+                for x in 0..BOARD_LENGTH {
                     self.cells[y * BOARD_LENGTH + x] = Cell::Free;
                 }
             }
@@ -416,8 +409,7 @@ impl Board {
                     self.board_environment.add(stone);
                 }
             }
-            self.board_environment.update_rows();
-            self.board_environment.update_columns();
+            self.board_environment.maybe_delete_rows();
             return self.add_stone();
         }
         return true;
