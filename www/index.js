@@ -1,7 +1,7 @@
-import { Board, Cell, Direction } from "turntris";
+import { Game, Cell } from "turntris";
 import { memory } from "turntris/turntris_bg";
 
-const CELL_SIZE = 25; // px
+const CELL_SIZE = 16; // px
 const BOARD_COLOR = "#DDDDDD";
 const BOARD_STROKE_COLOR = "#333333";
 const BLUE_COLOR = "#0099ff";
@@ -11,7 +11,7 @@ const GREEN_COLOR = "#00cc66";
 const YELLOW_COLOR = "#ffcc00";
 
 
-const board = Board.new();
+const board = Game.new();
 
 const canvas = document.getElementById("turntris-canvas");
 canvas.height = (CELL_SIZE + 1) * board.length() + 1;
@@ -81,13 +81,10 @@ drawBoard();
 document.addEventListener("keyup", function (e) {
 	e = e || window.event;
 	console.log("key event: " + e.keyCode);
-	// use e.keyCode
 	if (e.keyCode == 37) {
-		// move left
-		board.move_stone(Direction.Left);
+		board.rotate_stone_clockwise();
 	} else if (e.keyCode == 39) {
-		// move right 
-		board.move_stone(Direction.Right);
+		board.rotate_stone_counter_clockwise();
 	} else if (e.keyCode == 38) {
 		// roate clockwise
 		canvas.classList.add("rotate_clockwise");
@@ -103,6 +100,8 @@ document.addEventListener("keyup", function (e) {
 		window.setTimeout(() => {
 			canvas.classList.remove("rotate_counterclockwise");
 		}, 500);
+	} else if (e.keyCode == 32) {
+		board.drop_stone();
 	}
 	drawStones();
 });
